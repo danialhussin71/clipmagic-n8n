@@ -1,3 +1,4 @@
+
 import {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -9,7 +10,7 @@ import {
 
 export class ClipMagic implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'ClipMagic',
+		displayName: 'Clipmagic Api',
 		name: 'clipMagic',
 		icon: 'file:clipmagic.svg',
 		group: ['transform'],
@@ -28,6 +29,23 @@ export class ClipMagic implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				description: 'Extra settings for the request',
+				default: {},
+				options: [
+					{
+						displayName: 'Timeout (ms)',
+						name: 'timeout',
+						type: 'number',
+						default: 600000,
+						description: 'How long to wait before aborting the HTTP call. Set to 0 for no limit.',
+					},
+				],
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -75,6 +93,12 @@ export class ClipMagic implements INodeType {
 						value: 'generateClips',
 						description: 'Generate AI clips with karaoke subtitles',
 						action: 'Generate AI clips',
+					},
+					{
+						name: 'Split Screen',
+						value: 'splitScreen',
+						description: 'Creates a split-screen video from two media sources',
+						action: 'Create split-screen video',
 					},
 				],
 				default: 'convert',
@@ -805,11 +829,11 @@ export class ClipMagic implements INodeType {
 				name: 'displayMode',
 				type: 'options',
 				options: [
-					{ name: 'Word by Word', value: 'word' },
-					{ name: 'Full Text', value: 'text' },
+					{ name: 'Monoline', value: 'monoline' },
+					{ name: 'Word by Word', value: 'word_by_word' },
 				],
-				default: 'word',
-				description: 'How to display subtitles',
+				default: 'monoline',
+				description: 'Subtitle display style',
 				displayOptions: {
 					show: {
 						operation: ['generateClips'],
@@ -823,15 +847,143 @@ export class ClipMagic implements INodeType {
 				type: 'options',
 				options: [
 					{ name: 'Top', value: 'top' },
-					{ name: 'Middle', value: 'middle' },
+					{ name: 'Centre', value: 'centre' },
 					{ name: 'Bottom', value: 'bottom' },
 				],
-				default: 'bottom',
-				description: 'Position of subtitles in the frame',
+				default: 'centre',
+				description: 'Vertical alignment of subtitles',
 				displayOptions: {
 					show: {
 						operation: ['generateClips'],
 						subtitles: [true],
+					},
+				},
+			},
+
+			// Split Screen Parameters
+			{
+				displayName: 'Media URL A',
+				name: 'urlA',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'First media source URL',
+				displayOptions: {
+					show: {
+						operation: ['splitScreen'],
+					},
+				},
+			},
+			{
+				displayName: 'Media URL B',
+				name: 'urlB',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'Second media source URL',
+				displayOptions: {
+					show: {
+						operation: ['splitScreen'],
+					},
+				},
+			},
+			{
+				displayName: 'Orientation',
+				name: 'orientation',
+				type: 'options',
+				options: [
+					{ name: 'Horizontal (Side-by-side)', value: 'horizontal' },
+					{ name: 'Vertical (Stacked)', value: 'vertical' },
+				],
+				default: 'horizontal',
+				description: 'Split-screen orientation',
+				displayOptions: {
+					show: {
+						operation: ['splitScreen'],
+					},
+				},
+			},
+			{
+				displayName: 'Volume A',
+				name: 'volumeA',
+				type: 'number',
+				typeOptions: {
+					numberPrecision: 2,
+					minValue: 0,
+					maxValue: 2,
+					numberStepSize: 0.1,
+				},
+				default: 1,
+				description: 'Volume level for media A (0-2, where 1 is original volume)',
+				displayOptions: {
+					show: {
+						operation: ['splitScreen'],
+					},
+				},
+			},
+			{
+				displayName: 'Volume B',
+				name: 'volumeB',
+				type: 'number',
+				typeOptions: {
+					numberPrecision: 2,
+					minValue: 0,
+					maxValue: 2,
+					numberStepSize: 0.1,
+				},
+				default: 1,
+				description: 'Volume level for media B (0-2, where 1 is original volume)',
+				displayOptions: {
+					show: {
+						operation: ['splitScreen'],
+					},
+				},
+			},
+			{
+				displayName: 'Crop Part A',
+				name: 'cropPartA',
+				type: 'options',
+				options: [
+					{ name: 'None', value: '' },
+					{ name: 'First', value: 'first' },
+					{ name: 'Second', value: 'second' },
+					{ name: 'Center', value: 'center' },
+				],
+				default: '',
+				description: 'Crop setting for media A',
+				displayOptions: {
+					show: {
+						operation: ['splitScreen'],
+					},
+				},
+			},
+			{
+				displayName: 'Crop Part B',
+				name: 'cropPartB',
+				type: 'options',
+				options: [
+					{ name: 'None', value: '' },
+					{ name: 'First', value: 'first' },
+					{ name: 'Second', value: 'second' },
+					{ name: 'Center', value: 'center' },
+				],
+				default: '',
+				description: 'Crop setting for media B',
+				displayOptions: {
+					show: {
+						operation: ['splitScreen'],
+					},
+				},
+			},
+			{
+				displayName: 'Output Filename',
+				name: 'outputFilename',
+				type: 'string',
+				default: '',
+				description: 'Custom filename for the output (optional)',
+				displayOptions: {
+					show: {
+						operation: ['splitScreen'],
 					},
 				},
 			},
@@ -1061,13 +1213,45 @@ export class ClipMagic implements INodeType {
 						}
 						break;
 
+					case 'splitScreen':
+						endpoint = '/operations/split-screen';
+						method = 'POST';
+						body = {
+							url_a: this.getNodeParameter('urlA', i),
+							url_b: this.getNodeParameter('urlB', i),
+							orientation: this.getNodeParameter('orientation', i),
+							volume_a: this.getNodeParameter('volumeA', i),
+							volume_b: this.getNodeParameter('volumeB', i),
+							output_format: 'mp4',
+						};
+						
+						// Add crop settings if specified
+						const cropPartA = this.getNodeParameter('cropPartA', i) as string;
+						if (cropPartA) {
+							body.crop_part_a = cropPartA;
+						}
+						
+						const cropPartB = this.getNodeParameter('cropPartB', i) as string;
+						if (cropPartB) {
+							body.crop_part_b = cropPartB;
+						}
+						
+						// Add output filename if specified
+						const splitScreenFilename = this.getNodeParameter('outputFilename', i, '') as string;
+						if (splitScreenFilename) {
+							body.output_filename = splitScreenFilename;
+						}
+						break;
+
 					default:
 						throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`, {
 							itemIndex: i,
 						});
 				}
 
-				const options: any = {
+				const timeoutMs = this.getNodeParameter('options.timeout', i, 0) as number;
+
+                const options: any = {
 					headers: {
 						'Content-Type': 'application/json',
 					},
@@ -1075,11 +1259,16 @@ export class ClipMagic implements INodeType {
 					body: method === 'POST' ? body : undefined,
 					qs: method === 'GET' ? qs : undefined,
 					url: `${baseUrl}${endpoint}`,
-					encoding: 'binary',
+					encoding: null,
 					resolveWithFullResponse: true,
+                    
 				};
 
-				const response = await this.helpers.requestWithAuthentication.call(
+                if (timeoutMs > 0) {
+                    options.timeout = timeoutMs;
+                }
+
+                const response = await this.helpers.requestWithAuthentication.call(
 					this,
 					'clipMagicApi',
 					options,
@@ -1101,7 +1290,7 @@ export class ClipMagic implements INodeType {
 					}
 
 					const binaryData = await this.helpers.prepareBinaryData(
-						response.body,
+						response.body as Buffer,
 						filename,
 						response.headers['content-type'],
 					);

@@ -1,7 +1,7 @@
 {
-  "name": "clip-magic",
-  "version": "1.0.7",
-  "description": "n8n node for ClipMagic API - Video and audio processing tools",
+  "name": "n8n-nodes-clipmagic-api",
+  "version": "1.0.13",
+  "description": "n8n node for Clipmagic Api - Video and audio processing tools",
   "keywords": [
     "n8n-community-node-package",
     "clipmagic",
@@ -49,6 +49,7 @@
     ]
   },
   "devDependencies": {
+    "@types/node": "^24.0.14",
     "@typescript-eslint/parser": "^7.15.0",
     "eslint": "^8.56.0",
     "eslint-plugin-n8n-nodes-base": "^1.16.1",
